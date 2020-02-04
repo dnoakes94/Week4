@@ -1,0 +1,253 @@
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ArcGIS JavaScript Tutorials: Create a Starter App</title>
+<style>
+    html, body, #viewDiv {
+    padding: 0;
+    margin: 0;
+    height: 100%;
+    width: 100%;
+    }
+
+    h1 {
+        font-family:verdana;
+        text-align:center;
+      }
+
+    p {
+        font-family:verdana
+      }
+</style>
+
+<link rel="stylesheet" href="https://js.arcgis.com/4.13/esri/css/main.css">
+<script src="https://js.arcgis.com/4.13/"></script>
+
+<script>  
+    require([
+    "esri/Map",
+    "esri/views/MapView",
+    "esri/layers/FeatureLayer",
+    ], function(Map, MapView, FeatureLayer) {
+
+    var map = new Map({
+        basemap: "topo-vector"
+    });
+
+    var view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-118.80500,34.02700],
+        zoom: 13
+    });
+    
+    var popupTrailheads = {
+        "title": "{TRL_NAME}",
+        "content": "<b>City:</b> {CITY_JUR}<br><b>Cross Street:</b> {X_STREET}<br><b>Parking:</b> {PARKING}<br><b>Elevation:</b> {ELEV_FT} ft"
+    }
+
+    var trailheads = new FeatureLayer({
+        url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads_Styled/FeatureServer/0",
+        outFields: ["TRL_NAME","CITY_JUR","X_STREET","PARKING","ELEV_FT"],
+        popupTemplate: popupTrailheads,
+
+    });
+    
+    map.add(trailheads,1);
+    
+    var popupTrails = {
+        "title": "Trail Information",
+        "content": function(){
+        return "This is {TRL_NAME} with {ELEV_GAIN} ft of climbing.";
+        }
+    }
+
+    var trails = new FeatureLayer({
+        url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails_Styled/FeatureServer/0",
+        outFields: ["TRL_NAME","ELEV_GAIN"],
+        popupTemplate: popupTrails
+    });
+
+    map.add(trails,0);
+    
+    var popupOpenspaces = {
+        "title": "{PARK_NAME}",
+        "content": [{
+        "type": "fields",
+        "fieldInfos": [
+            {
+            "fieldName": "AGNCY_NAME",
+            "label": "Agency",
+            "isEditable": true,
+            "tooltip": "",
+            "visible": true,
+            "format": null,
+            "stringFieldOption": "text-box"
+            },
+            {
+            "fieldName": "TYPE",
+            "label": "Type",
+            "isEditable": true,
+            "tooltip": "",
+            "visible": true,
+            "format": null,
+            "stringFieldOption": "text-box"
+            },
+            {
+            "fieldName": "ACCESS_TYP",
+            "label": "Access",
+            "isEditable": true,
+            "tooltip": "",
+            "visible": true,
+            "format": null,
+            "stringFieldOption": "text-box"
+            },
+            {
+            "fieldName": "GIS_ACRES",
+            "label": "Acres",
+            "isEditable": true,
+            "tooltip": "",
+            "visible": true,
+            "format": {
+                "places": 2,
+                "digitSeparator": true
+            },
+            "stringFieldOption": "text-box"
+            }
+        ]
+        }]
+    }
+
+    var openspaces = new FeatureLayer({
+        url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Parks_and_Open_Space_Styled/FeatureServer/0",
+        outFields: ["TYPE","PARK_NAME", "AGNCY_NAME","ACCESS_TYP","GIS_ACRES"],
+        popupTemplate: popupOpenspaces
+    });
+
+    map.add(openspaces,0);
+    
+    var popupTrails = {
+        title: "Trail Information",
+        //*** ADD ***//
+        // content: function(){
+        //    return "This is {TRL_NAME} with {ELEV_GAIN} ft of climbing.";
+        // }
+        content: [{
+        type: "media",
+            mediaInfos: [{
+            type: "column-chart",
+            caption: "",
+            value: {
+                fields: [ "ELEV_MIN","ELEV_MAX" ],
+                normalizeField: null,
+                tooltipField: "Min and max elevation values"
+            }
+            }]
+        }]
+    }
+    
+    var popupTrails = {
+        title: "Trail Information",
+        //*** ADD ***//
+        // content: function(){
+        //    return "This is {TRL_NAME} with {ELEV_GAIN} ft of climbing.";
+        // }, {
+        expressionInfos: [{
+        name: "elevation-ratio",
+        title: "Elevation change",
+        expression: "Round((($feature.ELEV_MAX - $feature.ELEV_MIN)/($feature.LENGTH_MI)/5280)*100,2)"
+        }],
+        content: "The {TRL_NAME} trail average slope per mile is: {expression/elevation-ratio}% over a total of {LENGTH_MI} miles."
+    }
+
+    var featureLayer = new FeatureLayer({
+        url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails_Styled/FeatureServer/0",
+        outFields: ["*"], // Return all fields so it can be queried client-side
+        popupTemplate: {  // Enable a popup
+        title: "{TRL_NAME}", // Show attribute value
+        content: "The trail elevation gain is {ELEV_GAIN} ft."  // Display in pop-up
+        }
+        });
+
+        map.add(featureLayer,0);
+
+        
+        var sqlExpressions = ["TRL_ID = 0", "TRL_ID > 0",  "USE_BIKE = 'Yes'", "USE_BIKE = 'No'", "ELEV_GAIN < 1000", "ELEV_GAIN > 1000", "TRL_NAME = 'California Coastal Trail'"];
+    
+        var selectFilter = document.createElement("select");
+    selectFilter.setAttribute("class", "esri-widget esri-select");
+    selectFilter.setAttribute("style", "width: 275px; font-family: Avenir Next W00; font-size: 1em;");
+
+    sqlExpressions.forEach(function(sql){
+    var option = document.createElement("option");
+    option.value = sql;
+    option.innerHTML = sql;
+    selectFilter.appendChild(option);
+    });
+
+    view.ui.add(selectFilter, "top-right",0);
+
+    //Apply a server-side filter//
+
+    function setFeatureLayerFilter(expression) {
+        featureLayer.definitionExpression = expression;
+        }
+
+        //Apply a client-side filter//
+
+        selectFilter.addEventListener('change', function (event) {
+        // setFeatureLayerFilter(event.target.value);
+        setFeatureLayerViewFilter(event.target.value);
+      });
+
+
+    //Update the filter with the code below to show the excluded features with 50% opacity.//
+
+    function setFeatureLayerViewFilter(expression) {
+    view.whenLayerView(featureLayer).then(function(featureLayerView) {
+        //*** UPDATE ***//
+        // featureLayerView.filter = {
+        //   where: expression
+        // };
+        featureLayerView.effect = {
+        filter: {
+            where: expression
+        },
+        excludedEffect: "opacity(50%)"
+        }
+    });
+    }
+    
+
+    //Add the following code to highlight features as the cursor moves.//
+
+    var highlight;
+
+      view.whenLayerView(featureLayer).then(function(featureLayerView) {
+        view.on("pointer-move", function(event){
+          view.hitTest(event).then(function(response){
+            // Only return features for the feature layer
+            var feature = response.results.filter(function (result) {
+             return result.graphic.layer === featureLayer;
+            })[0].graphic;
+            if (highlight) {
+             highlight.remove();
+            }
+            // Highlight feature
+            highlight = featureLayerView.highlight(feature);
+          });
+        });
+      });
+
+    });
+</script>
+
+</head>
+<body>
+    <div>
+        <h1>Proof of Concept</h1>
+        <p>This map uses pop-up configurations combined with filtered feature layers which I reordered to be more aesthetically pleasing. </p>
+    </div>
+    <div id="viewDiv"></div>
+</html>
